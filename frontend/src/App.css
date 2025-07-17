@@ -1,42 +1,133 @@
-#root {
-  max-width: 1280px;
-  margin: 0 auto;
-  padding: 2rem;
-  text-align: center;
+/* Sleek app background */
+.app-bg {
+  min-height: 100vh;
+  background: linear-gradient(135deg, #e0e7ef 0%, #f8fafc 100%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
 }
 
-.logo {
-  height: 6em;
-  padding: 1.5em;
-  will-change: filter;
-  transition: filter 300ms;
-}
-.logo:hover {
-  filter: drop-shadow(0 0 2em #646cffaa);
-}
-.logo.react:hover {
-  filter: drop-shadow(0 0 2em #61dafbaa);
+/* Header with logo and title */
+.header {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 2rem 0 1rem 0;
 }
 
-@keyframes logo-spin {
-  from {
-    transform: rotate(0deg);
-  }
-  to {
-    transform: rotate(360deg);
-  }
+.logo-img {
+  height: 56px;
+  width: 56px;
+  border-radius: 12px;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.07);
+  background: white;
+  padding: 0.5rem;
 }
 
-@media (prefers-reduced-motion: no-preference) {
-  a:nth-of-type(2) .logo {
-    animation: logo-spin infinite 20s linear;
-  }
+.app-title {
+  font-size: 2.2rem;
+  font-weight: 700;
+  color: #1e293b;
+  letter-spacing: 0.02em;
+  font-family: 'Inter', 'Avenir', 'Helvetica', 'Arial', sans-serif;
 }
 
 .card {
-  padding: 2em;
+  background: #fff;
+  border-radius: 18px;
+  box-shadow: 0 4px 32px rgba(30,41,59,0.08);
+  padding: 2.5rem 2rem 2rem 2rem;
+  margin-top: 1.5rem;
+  width: 100%;
+  max-width: 700px;
 }
 
-.read-the-docs {
-  color: #888;
+.claims-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.claims-title {
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: #334155;
+  margin-bottom: 1.5rem;
+}
+
+.loading {
+  color: #64748b;
+  font-size: 1.1rem;
+  margin: 2rem 0;
+}
+
+.table-container {
+  width: 100%;
+  overflow-x: auto;
+}
+
+.claims-table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  background: #f1f5f9;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 2px 8px rgba(30,41,59,0.04);
+}
+
+.claims-table th, .claims-table td {
+  padding: 0.85rem 1.2rem;
+  text-align: left;
+}
+
+.claims-table th {
+  background: #e2e8f0;
+  color: #334155;
+  font-weight: 700;
+  font-size: 1rem;
+  border-bottom: 2px solid #cbd5e1;
+}
+
+.claims-table td {
+  color: #475569;
+  font-size: 1rem;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.claims-table tr:last-child td {
+  border-bottom: none;
+}
+
+.status-bubble {
+  display: inline-block;
+  padding: 0.25em 0.9em;
+  border-radius: 999px;
+  font-size: 0.98em;
+  font-weight: 600;
+  color: #fff;
+  letter-spacing: 0.01em;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.04);
+}
+.status-approved {
+  background: #22c55e;
+}
+.status-pending {
+  background: #f59e42;
+}
+
+@media (max-width: 600px) {
+  .card {
+    padding: 1rem 0.5rem;
+  }
+  .claims-title {
+    font-size: 1.1rem;
+  }
+  .app-title {
+    font-size: 1.3rem;
+  }
+  .logo-img {
+    height: 36px;
+    width: 36px;
+  }
 }
