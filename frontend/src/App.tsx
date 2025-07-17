@@ -19,10 +19,12 @@ export function App() {
   const [claims, setClaims] = useState<Claim[]>([]);
   const [loading, setLoading] = useState(true);
   const [sortOrder, setSortOrder] = useState<'desc' | 'asc'>('desc');
-  const [recording, setRecording] = useState(false);
-  const [audioUrl, setAudioUrl] = useState<string | null>(null);
-  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
-  const audioChunks = useRef<Blob[]>([]);
+  const [ws, setWs] = useState<WebSocket | null>(null);
+  const [connected, setConnected] = useState(false);
+  const [input, setInput] = useState("");
+  const [agentSpeaking, setAgentSpeaking] = useState(false);
+  const audioBufferRef = useRef<ArrayBuffer[]>([]);
+  const playTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
     (async () => {
@@ -43,32 +45,56 @@ export function App() {
     }
   });
 
-  // Audio recording handlers
-  const startRecording = async () => {
-    setAudioUrl(null);
-    audioChunks.current = [];
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      const mediaRecorder = new window.MediaRecorder(stream);
-      mediaRecorderRef.current = mediaRecorder;
-      mediaRecorder.ondataavailable = (e) => {
-        if (e.data.size > 0) audioChunks.current.push(e.data);
-      };
-      mediaRecorder.onstop = () => {
-        const blob = new Blob(audioChunks.current, { type: 'audio/webm' });
-        setAudioUrl(URL.createObjectURL(blob));
-        // TODO: send blob to Eleven Labs
-      };
-      mediaRecorder.start();
-      setRecording(true);
-    } catch (err) {
-      alert('Could not start audio recording.');
-    }
+  // WebSocket handlers for text-to-speech chat
+  const startSession = () => {
+    console.log('Attempting to start WebSocket session...');
+    const wsUrl = 'ws://localhost:8000/ws/voice-agent';
+    console.log('WebSocket URL:', wsUrl);
+    const socket = new window.WebSocket(wsUrl);
+    setWs(socket);
+    socket.binaryType = 'arraybuffer';
+    socket.onopen = () => {
+      console.log('WebSocket connection opened');
+      setConnected(true);
+    };
+    socket.onclose = () => {
+      console.log('WebSocket connection closed');
+      setConnected(false);
+    };
+    socket.onerror = (e) => {
+      console.error('WebSocket error', e);
+      setConnected(false);
+    };
+    socket.onmessage = (event) => {
+      console.log('Received message from backend', event);
+      if (typeof event.data !== 'string') {
+        setAgentSpeaking(true);
+        audioBufferRef.current.push(event.data);
+        // Reset the timeout each time a chunk arrives
+        if (playTimeoutRef.current) clearTimeout(playTimeoutRef.current);
+        playTimeoutRef.current = setTimeout(() => {
+          // Play the buffered audio as a single blob
+          const audioBlob = new Blob(audioBufferRef.current, { type: 'audio/mpeg' });
+          const audioUrl = URL.createObjectURL(audioBlob);
+          const audio = new Audio(audioUrl);
+          audio.play();
+          setAgentSpeaking(false);
+          audioBufferRef.current = [];
+        }, 300); // Wait 300ms after last chunk to play
+      }
+    };
   };
 
-  const stopRecording = () => {
-    mediaRecorderRef.current?.stop();
-    setRecording(false);
+  const endSession = () => {
+    ws?.close();
+    setConnected(false);
+  };
+
+  const sendMessage = () => {
+    if (ws && connected && input.trim()) {
+      ws.send(input.trim());
+      setInput("");
+    }
   };
 
   return (
@@ -78,28 +104,72 @@ export function App() {
         <span className="app-title">Harbor Claims Management</span>
       </header>
       <main className="card claims-card">
-        <button
-          className="voice-agent-btn"
-          onClick={recording ? stopRecording : startRecording}
-          style={{
-            background: recording ? '#f59e42' : '#2563eb',
-            color: '#fff',
-            border: 'none',
-            borderRadius: 8,
-            padding: '0.7em 1.5em',
-            fontSize: '1.1em',
-            fontWeight: 600,
-            marginBottom: '1.5rem',
-            cursor: 'pointer',
-            boxShadow: recording ? '0 0 0 2px #fbbf24' : '0 2px 8px rgba(16,24,40,0.10)',
-            transition: 'background 0.2s',
-          }}
-        >
-          {recording ? 'Stop Recording' : 'Talk to Agent'}
-        </button>
-        {recording && <div style={{ color: '#fbbf24', marginBottom: 12 }}>Recording... Please describe your accident.</div>}
-        {audioUrl && (
-          <audio controls src={audioUrl} style={{ marginBottom: 16, width: '100%' }} />
+        {!connected ? (
+          <button
+            className="voice-agent-btn"
+            onClick={startSession}
+            style={{
+              background: '#2563eb',
+              color: '#fff',
+              border: 'none',
+              borderRadius: 8,
+              padding: '0.7em 1.5em',
+              fontSize: '1.1em',
+              fontWeight: 600,
+              marginBottom: '1.5rem',
+              cursor: 'pointer',
+              boxShadow: '0 2px 8px rgba(16,24,40,0.10)',
+              transition: 'background 0.2s',
+            }}
+          >
+            Talk to Agent
+          </button>
+        ) : (
+          <>
+            <div style={{ display: 'flex', gap: 8, marginBottom: 16, width: '100%' }}>
+              <input
+                type="text"
+                value={input}
+                onChange={e => setInput(e.target.value)}
+                onKeyDown={e => { if (e.key === 'Enter') sendMessage(); }}
+                placeholder="Type your message..."
+                style={{ flex: 1, padding: '0.7em', borderRadius: 8, border: '1px solid #334155', fontSize: '1.1em' }}
+                disabled={!connected}
+              />
+              <button
+                onClick={sendMessage}
+                style={{
+                  background: '#2563eb',
+                  color: '#fff',
+                  border: 'none',
+                  borderRadius: 8,
+                  padding: '0.7em 1.2em',
+                  fontSize: '1.1em',
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                }}
+                disabled={!connected || !input.trim()}
+              >
+                Send
+              </button>
+              <button
+                onClick={endSession}
+                style={{
+                  background: '#f59e42',
+                  color: '#fff',
+                  border: 'none',
+                  borderRadius: 8,
+                  padding: '0.7em 1.2em',
+                  fontSize: '1.1em',
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                }}
+              >
+                End
+              </button>
+            </div>
+            {agentSpeaking && <div style={{ color: '#38bdf8', marginBottom: 12 }}>Agent is responding...</div>}
+          </>
         )}
         <h2 className="claims-title">Claims Log</h2>
         {loading ? (
